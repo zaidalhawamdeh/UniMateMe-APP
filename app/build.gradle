@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace "com.unimatem.app"   // غيّرها إن أردت
+    namespace "com.example.unimateme"
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.unimatem.app"  // غيّرها إن أردت
+        applicationId "com.example.unimateme"
         minSdk 24
         targetSdk 33
         versionCode 1
@@ -16,9 +16,7 @@ android {
     }
 
     buildTypes {
-        debug {
-            debuggable true
-        }
+        debug { debuggable true }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
