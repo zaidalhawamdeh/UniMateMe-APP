@@ -1,11 +1,13 @@
 # Name of the workflow
 name: Build Android APK
 
-# Controls when the action will run.
-# This workflow runs on every push to the main branch.
+# Controls when the action will run
 on:
+  # Triggers the workflow on push events but only for the "main" branch
   push:
     branches: [ "main" ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 # A workflow run is made up of one or more jobs
 jobs:
@@ -16,17 +18,18 @@ jobs:
     # Steps represent a sequence of tasks
     steps:
     # 1. Checks-out your repository so the workflow can access it
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
     # 2. Set up JDK (Java Development Kit) version 17
-    - name: set up JDK 17
+    - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: 'gradle'
 
-    # 3. Grant execute permission for the gradlew file (important for Linux runners)
+    # 3. Grant execute permission for the gradlew file
     - name: Grant execute permission for gradlew
       run: chmod +x app/gradlew
 
