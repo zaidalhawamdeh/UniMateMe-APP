@@ -20,7 +20,7 @@ jobs:
           java-version: "17"
           cache: gradle
 
-           - name: Set up Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: |
@@ -28,12 +28,9 @@ jobs:
             build-tools;33.0.2
             cmdline-tools;latest
 
-
-      # 👇 قبول كل رخص الـ SDK تلقائياً
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
 
-      # 👇 توليد الـ wrapper داخل نفس التشغيل (لو مش موجود)
       - name: Generate Gradle Wrapper (8.5)
         uses: gradle/gradle-build-action@v3
         with:
