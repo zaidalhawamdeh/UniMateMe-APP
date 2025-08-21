@@ -19,11 +19,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # 👇 تحميل Android SDK + أدواته يدوياً
+      # 1) نزّل Android SDK يدوياً (موثوق)
       - name: Install Android SDK
         run: |
+          set -e
           sudo apt-get update -qq
-          sudo apt-get install -y wget tar unzip
+          sudo apt-get install -y wget unzip
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdtools.zip
           mkdir -p $HOME/android-sdk/cmdline-tools
           unzip -q cmdtools.zip -d $HOME/android-sdk/cmdline-tools
@@ -31,27 +32,31 @@ jobs:
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk \
             "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
 
-      # 👇 توليد Gradle Wrapper (لو مش موجود)
-      - name: Generate Gradle Wrapper (8.5)
-        uses: gradle/gradle-build-action@v3
+      # 2) حضّر Gradle (الإصدار 8.5) ثم ولّد wrapper
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: "8.5"
-          arguments: "wrapper --gradle-version 8.5"
+          cache-disabled: true
+
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.5
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build Release APK
-        run: ./gradlew clean assembleRelease --stacktrace --no-daemon
+      # 3) ابني Debug APK (أسهل وما يحتاج توقيع)
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
+      # 4) ارفع الـ APK
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
