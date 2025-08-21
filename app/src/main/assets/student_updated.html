@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniMate: The Neural Cortex</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #010104;
+            --surface-color: rgba(10, 10, 20, 0.6);
+            --border-color: rgba(80, 80, 150, 0.4);
+            --text-primary: #e0e6f0;
+            --text-secondary: #a0a8d8;
+            --accent-primary: #8a98ff;
+            --accent-secondary: #00f5d4;
+            --accent-glow: rgba(138, 152, 255, 0.3);
+            --font-family-ar: 'Tajawal', sans-serif;
+            --font-family-en: 'Poppins', sans-serif;
+        }
+
+        /* --- Base & Reset --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overscroll-behavior: none;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        /* Language-specific styles */
+        html[lang="ar"] body { font-family: var(--font-family-ar); }
+        html[lang="en"] body { font-family: var(--font-family-en); }
+        html[lang="en"] .orbital-nav-item, html[lang="en"] .list-item { text-align: left; }
+        html[lang="en"] .glass-card h3 .icon { margin-left: 0; margin-right: 0.75rem; }
+        html[lang="en"] .chat-message.user { align-self: flex-end; }
+        html[lang="en"] .chat-message.ai { align-self: flex-start; }
+
+
+        /* --- App Container --- */
+        .app-container {
+            width: 100%;
+            max-width: 450px;
+            height: 100vh;
+            max-height: 950px;
+            margin: auto;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        
+        /* --- 3D Background --- */
+        #neural-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            border-radius: 24px;
+        }
+
+        /* --- Screens --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column;
+            opacity: 0; transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            z-index: 2;
+            transform: scale(0.98);
+        }
+        .screen.active { display: flex; opacity: 1; transform: scale(1); }
+
+        /* --- Splash Screen --- */
+        #splash-screen { justify-content: center; align-items: center; }
+        .logo-container { text-align: center; }
+        .logo-text { font-size: 48px; font-weight: 800; color: var(--text-primary); animation: textGlow 2.5s infinite alternate; }
+        .logo-text span { color: var(--accent-primary); }
+        #entry-prompt {
+            position: absolute;
+            bottom: 20%;
+            font-size: 18px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            background: var(--surface-color);
+            backdrop-filter: blur(5px);
+            animation: fadeInPrompt 3s ease-in-out;
+        }
+        @keyframes fadeInPrompt { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInLogo { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes textGlow {
+            from { text-shadow: 0 0 8px var(--accent-glow), 0 0 10px var(--accent-glow); }
+            to { text-shadow: 0 0 25px var(--accent-glow), 0 0 30px var(--accent-glow); }
+        }
+        
+        /* --- Student Cognitive Hub --- */
+        #student-app-screen { justify-content: center; align-items: center; }
+        #profile-notify-container {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            z-index: 11;
+        }
+        html[lang="ar"] #profile-notify-container { left: 20px; }
+        html[lang="en"] #profile-notify-container { right: 20px; }
+        #profile-notify-container .profile-icon,
+        #profile-notify-container .notify-icon {
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.3s;
+        }
+        #profile-notify-container .profile-icon:hover,
+        #profile-notify-container .notify-icon:hover {
+            color: var(--accent-primary);
+        }
+        .cognitive-hub { position: relative; width: 350px; height: 350px; display: flex; justify-content: center; align-items: center; }
+        .energy-core {
+            width: 120px; height: 120px; background: radial-gradient(circle, var(--accent-primary), transparent 70%);
+            border-radius: 50%; cursor: pointer; transition: transform 0.3s;
+            display: flex; justify-content: center; align-items: center; text-align: center;
+            animation: pulse 4s infinite;
+        }
+        .energy-core:hover { transform: scale(1.1); }
+        .energy-core-text { font-size: 18px; font-weight: 700; color: white; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 20px 5px var(--accent-glow); } 50% { box-shadow: 0 0 40px 15px var(--accent-glow); } }
+        
+        .orbital-nav-item {
+            position: absolute; width: 70px; height: 70px; background: var(--surface-color);
+            border: 1px solid var(--border-color); border-radius: 50%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.3s; backdrop-filter: blur(5px);
+            font-size: 12px; color: var(--text-secondary);
+        }
+        .orbital-nav-item:hover { border-color: var(--accent-secondary); color: var(--accent-secondary); transform: scale(1.1); }
+        .orbital-nav-item .icon { font-size: 24px; margin-bottom: 4px; }
+
+        /* --- Detail Views (Modal-like) --- */
+        .detail-view-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            z-index: 10; transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+        }
+        .detail-view-container.active { transform: translateY(0); }
+        .detail-view-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .detail-view-header h2 { font-size: 24px; }
+        .close-view-btn { font-size: 28px; color: var(--text-secondary); cursor: pointer; background: none; border: none; }
+        .detail-view-content { flex-grow: 1; overflow-y: auto; padding: 0 1.5rem 1.5rem 1.5rem; }
+
+
+        /* --- Glassmorphism Cards --- */
+        .glass-card {
+            background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 1.5rem; margin-bottom: 1.5rem;
+        }
+        .glass-card h3 { font-size: 20px; margin-bottom: 1rem; display: flex; align-items: center; }
+        .glass-card h3 .icon { font-size: 24px; margin-left: 0.75rem; color: var(--accent-primary); }
+        .chart-container { height: 220px; margin-top: 1rem; }
+        .list-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item:hover { background-color: rgba(138, 152, 255, 0.1); }
+
+
+        /* --- Wallet & NFTs --- */
+        .wallet-balance .amount { font-size: 48px; font-weight: 800; color: var(--accent-secondary); text-align: center; }
+        .wallet-balance .label { font-size: 18px; color: var(--text-secondary); text-align: center; }
+        .nft-gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; perspective: 1000px; }
+        .nft-card {
+            background: var(--surface-color); border-radius: 12px; overflow: hidden; text-align: center;
+            transform-style: preserve-3d; transition: transform 0.5s;
+        }
+        .nft-card:hover { transform: rotateY(10deg) rotateX(5deg) scale(1.05); }
+        .nft-card img { width: 100%; height: 120px; object-fit: cover; background-color: #333; }
+        .nft-card p { padding: 0.75rem; font-size: 14px; font-weight: 500; }
+        .marketplace-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .reward-card { background: var(--surface-color); border-radius: 12px; overflow: hidden; transition: transform 0.3s; }
+        .reward-card:hover { transform: translateY(-5px); }
+        .reward-card .reward-image { width: 100%; height: 100px; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.2); }
+        .reward-card-info { padding: 1rem; text-align: center; }
+        .reward-card-info h4 { font-size: 16px; margin-bottom: 0.5rem; min-height: 40px; }
+        .reward-card-info .price { font-size: 14px; font-weight: 700; color: var(--accent-secondary); }
+        .redeem-btn { width: 100%; padding: 0.5rem; margin-top: 0.75rem; background: var(--accent-primary); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 700; }
+
+        /* --- AI Chat --- */
+        .chat-window { height: 100%; display: flex; flex-direction: column; }
+        .chat-messages { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; padding: 0.5rem; }
+        .chat-message { max-width: 80%; padding: 0.75rem 1rem; border-radius: 18px; line-height: 1.5; animation: slideIn 0.3s ease-out; }
+        .chat-message p { margin: 0; }
+        .chat-message img { max-width: 100%; border-radius: 12px; margin-bottom: 8px; }
+        .chat-message.user { background: var(--accent-primary); color: #fff; border-bottom-right-radius: 4px; }
+        .chat-message.ai { background: var(--surface-color); border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
+        html[lang="ar"] .chat-message.user { align-self: flex-end; }
+        html[lang="ar"] .chat-message.ai { align-self: flex-start; }
+        .chat-message.loading span {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .chat-message.loading span:nth-child(1) { animation-delay: -0.32s; }
+        .chat-message.loading span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .chat-input-area { display: flex; padding: 1rem; gap: 0.5rem; border-top: 1px solid var(--border-color); flex-shrink: 0; align-items: center; }
+        .chat-input { flex-grow: 1; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 20px; padding: 0.75rem 1rem; color: var(--text-primary); font-family: inherit; }
+        .chat-send-btn, .chat-attach-btn { background: var(--accent-primary); border: none; border-radius: 50%; width: 44px; height: 44px; color: white; font-size: 20px; cursor: pointer; flex-shrink: 0; display: flex; justify-content: center; align-items: center; }
+        .chat-attach-btn { background: transparent; color: var(--text-secondary); }
+        #image-preview-container { margin-bottom: 8px; }
+        #image-preview-container img { max-width: 60px; max-height: 60px; border-radius: 8px; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Cognitive Sync & Radio Player --- */
+        .primary-btn {
+            display: block; width: 100%; padding: 1rem; font-size: 16px; font-weight: 700;
+            color: white; background: var(--accent-primary); border: none;
+            border-radius: 12px; cursor: pointer; transition: background-color 0.3s;
+        }
+        .primary-btn:hover { background-color: #a0a8d8; }
+        .timer-display { font-size: 64px; font-weight: 800; text-align: center; margin: 2rem 0; color: var(--accent-secondary); }
+        .focus-energy-bar { width: 100%; height: 10px; background: var(--surface-color); border-radius: 5px; margin-top: 1rem; }
+        .focus-energy-fill { width: 80%; height: 100%; background: var(--accent-secondary); border-radius: 5px; }
+        .music-player { text-align: center; }
+        .album-art { width: 150px; height: 150px; background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; margin: 0 auto 1.5rem; display:flex; justify-content:center; align-items:center; }
+        .track-info h4 { font-size: 20px; }
+        .track-info p { color: var(--text-secondary); }
+        .player-controls { display: flex; justify-content: center; align-items: center; gap: 2rem; margin-top: 1.5rem; }
+        .player-btn { background: none; border: none; color: var(--text-primary); font-size: 28px; cursor: pointer; }
+        #play-pause-btn { font-size: 44px; color: var(--accent-primary); }
+        .progress-bar-container { width: 100%; height: 4px; background-color: var(--border-color); border-radius: 2px; margin-top: 1.5rem; cursor: pointer; }
+        .progress-bar { width: 0%; height: 100%; background-color: var(--accent-secondary); border-radius: 2px; }
+        .live-stream-card { position: relative; }
+        .live-stream-placeholder { width: 100%; height: 180px; background-color: #000; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 48px; }
+        .live-badge { position: absolute; top: 1rem; background-color: #e53e3e; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        html[lang="ar"] .live-badge { right: 1rem; }
+        html[lang="en"] .live-badge { left: 1rem; }
+
+
+        /* --- Academic Matrix & Wallet Tabs --- */
+        .custom-tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; flex-shrink: 0; }
+        .custom-tab { padding: 0.75rem 1rem; cursor: pointer; color: var(--text-secondary); border-bottom: 2px solid transparent; font-weight: 500; }
+        .custom-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+        .custom-tab-content { display: none; }
+        .custom-tab-content.active { display: block; animation: fadeInContent 0.5s; }
+        @keyframes fadeInContent { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* --- Schedule Grid --- */
+        .schedule-grid-container {
+            display: grid;
+            grid-template-columns: 50px repeat(5, 1fr); /* Time column + 5 days */
+            gap: 5px;
+            margin-top: 1.5rem;
+        }
+        .schedule-grid-container .header {
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-primary);
+            padding-bottom: 0.5rem;
+        }
+        .schedule-grid-container .time-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+            position: relative;
+            top: -8px;
+        }
+        .schedule-day-column {
+            position: relative;
+            border-left: 1px solid var(--border-color);
+            padding: 0 2px;
+        }
+        html[lang="ar"] .schedule-day-column { border-left: 1px solid var(--border-color); border-right: none;}
+        html[lang="en"] .schedule-day-column { border-right: 1px solid var(--border-color); border-left: none;}
+
+        .schedule-day-column:first-of-type { border: none; }
+        .schedule-event {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            background-color: hsla(from var(--event-color, var(--accent-primary)) h s l / 0.25);
+            border-radius: 6px;
+            padding: 0.5rem;
+            font-size: 12px;
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            top: calc( (var(--event-start-hour) - 8) * 60px ); /* 8am baseline, 60px/hr */
+            height: calc( var(--event-duration-min) * 1px ); /* 1px/min */
+        }
+        html[lang="ar"] .schedule-event { border-left: 3px solid var(--event-color, var(--accent-primary)); }
+        html[lang="en"] .schedule-event { border-right: 3px solid var(--event-color, var(--accent-primary)); }
+
+        .schedule-event strong { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+        .schedule-event span { font-size: 11px; color: var(--text-secondary); }
+
+        /* Help request form styles */
+        #help-request-form input,
+        #help-request-form textarea {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        /* --- Language Toggle --- */
+        .lang-toggle-container { display: flex; align-items: center; justify-content: space-between; }
+        .lang-toggle {
+            display: flex;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .lang-toggle button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .lang-toggle button.active {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        /* Cognition Lab Specific Styles */
+        .challenge-card { 
+            border-left: 4px solid var(--accent-secondary); 
+        }
+        html[lang="en"] .challenge-card {
+            border-left: none;
+            border-right: 4px solid var(--accent-secondary);
+        }
+        .code-editor-mock {
+            background-color: #0c0c14;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            min-height: 150px;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow: auto;
+            color: #d0d0d0;
+        }
+
+        /* Lecture Recording Styles */
+        .recording-btn {
+            background-color: #e53e3e;
+            color: white;
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
+        }
+        .secondary-btn {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <canvas id="neural-canvas"></canvas>
+        <div id="splash-screen" class="screen active">
+            <div class="logo-container" style="opacity:0;">
+                <h1 class="logo-text">UniMate<span>Me</span></h1>
+            </div>
+            <div id="entry-prompt" data-translate-key="entry_prompt">انقر للدخول</div>
+        </div>
+        
+        <div id="student-app-screen" class="screen">
+            <div id="profile-notify-container">
+                <div class="notify-icon" id="notify-btn">🔔</div>
+                <div class="profile-icon" id="profile-btn">👤</div>
+            </div>
+            <div class="cognitive-hub">
+                <div class="energy-core"><div class="energy-core-text" data-translate-key="cognitive_hub_core">المحور<br>المعرفي</div></div>
+                <div class="orbital-nav-item" data-view="student-dashboard" data-title-key="view_title_dashboard"><div class="icon">🏠</div><div data-translate-key="hub_nav_dashboard">الرئيسية</div></div>
+                <div class="orbital-nav-item" data-view="student-ai-chat" data-title-key="view_title_ai_chat"><div class="icon">🤖</div><div data-translate-key="hub_nav_ai_chat">المساعد</div></div>
+                <div class="orbital-nav-item" data-view="student-wallet" data-title-key="view_title_wallet"><div class="icon">💼</div><div data-translate-key="hub_nav_wallet">الخزنة</div></div>
+                <div class="orbital-nav-item" data-view="student-radio" data-title-key="view_title_radio"><div class="icon">📻</div><div data-translate-key="hub_nav_radio">البث</div></div>
+                <div class="orbital-nav-item" data-view="student-sync" data-title-key="view_title_sync"><div class="icon">🌐</div><div data-translate-key="hub_nav_sync">التزامن</div></div>
+                <div class="orbital-nav-item" data-view="student-market" data-title-key="view_title_market"><div class="icon">📘</div><div data-translate-key="hub_nav_market">سوق المعرفة</div></div>
+                <div class="orbital-nav-item" data-view="student-lab" data-title-key="view_title_lab"><div class="icon">🔬</div><div data-translate-key="hub_nav_lab">المختبر</div></div>
+            </div>
+        </div>
+        
+        <div id="detail-view-container" class="detail-view-container">
+            <div class="detail-view-header"><h2 id="detail-view-title"></h2><button class="close-view-btn">✕</button></div>
+            <div id="detail-view-content" class="detail-view-content"></div>
+        </div>
+    </div>
+    
+    <audio id="intro-audio" src="https://unimateme.com/logo_opener(chosic.com).mp3" preload="auto"></audio>
+
+    <template id="student-dashboard-template">
+        <div class="glass-card">
+            <h3 data-translate-key="dashboard_next_lecture_title"><span class="icon">📍</span>المحاضرة القادمة</h3>
+            <div class="list-item" style="padding: 0; border: none;">
+                <div>
+                    <p class="font-bold text-lg" data-translate-key="dashboard_next_lecture_name">محاضرة الكيمياء</p>
+                    <span class="text-sm text-secondary" data-translate-key="dashboard_next_lecture_time">الوقت: 11:00 صباحاً</span>
+                </div>
+                <div class="text-left">
+                    <p class="font-bold text-lg" data-translate-key="dashboard_next_lecture_hall">القاعة 201</p>
+                    <span class="text-sm text-secondary" data-translate-key="dashboard_next_lecture_building">مبنى الهندسة</span>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card"><h3 data-translate-key="dashboard_uniai_pulse_title"><span class="icon">🧠</span>نبض Uni-AI</h3><p class="text-sm text-gray-300" data-translate-key="dashboard_uniai_pulse_desc">طاقتك المعرفية مرتفعة اليوم. إنها فرصة مثالية للتعمق في مادة "الذكاء الاصطناعي" لمدة 60 دقيقة لتحقيق أقصى استفادة.</p></div>
+        <div class="glass-card"><h3 data-translate-key="dashboard_effort_stream_title"><span class="icon">⚡</span>مجرى الجهد</h3><div class="chart-container"><canvas id="effort-chart"></canvas></div></div>
+    </template>
+
+    <template id="student-notifications-template">
+        <div class="glass-card">
+            <h3 data-translate-key="notifications_title"><span class="icon">🔔</span>الإشعارات</h3>
+            <div id="notifications-list" class="list-container">
+                <div class="list-item" data-translate-key="notifications_sample1">لا توجد إشعارات حتى الآن.</div>
+            </div>
+        </div>
+        <div class="glass-card">
+            <h3 data-translate-key="notifications_settings_title"><span class="icon">⚙️</span>إعدادات الإشعارات</h3>
+            <div class="list-item">
+                <div>
+                    <strong data-translate-key="notify_change_lecture">تنبيه تغيير المحاضرة</strong><br />
+                    <small data-translate-key="notify_change_lecture_desc">احصل على إشعار عند تغيير مكان أو موعد المحاضرة</small>
+                </div>
+                <input type="checkbox" id="toggle-lecture-notify" style="transform: scale(1.3);" />
+            </div>
+            <div class="list-item">
+                <div>
+                    <strong data-translate-key="notify_rewards">تنبيه المكافآت</strong><br />
+                    <small data-translate-key="notify_rewards_desc">تلقَ إشعار عند توفر مكافآت جديدة</small>
+                </div>
+                <input type="checkbox" id="toggle-rewards-notify" style="transform: scale(1.3);" />
+            </div>
+        </div>
+    </template>
+
+    <template id="student-market-template">
+        <div class="glass-card">
+            <h3 data-translate-key="market_title"><span class="icon">📘</span>سوق المعرفة</h3>
+            <p data-translate-key="market_intro">هنا يمكنك طلب المساعدة أو تقديمها للآخرين.</p>
+            <form id="help-request-form">
+                <input type="text" id="help-subject" placeholder="موضوع الطلب" required />
+                <textarea id="help-description" placeholder="وصف الطلب" rows="3"></textarea>
+                <button type="submit" class="primary-btn" data-translate-key="market_submit_help">أرسل طلب مساعدة</button>
+            </form>
+        </div>
+        <div class="glass-card">
+            <h3 data-translate-key="market_help_list"><span class="icon">📚</span>قائمة طلبات المساعدة</h3>
+            <div id="help-list"></div>
+        </div>
+    </template>
+    
+    <template id="student-ai-chat-template">
+        <div class="chat-window">
+            <div class="chat-messages">
+                <div class="chat-message ai" data-translate-key="ai_welcome_message">أنا Uni-AI، واجهتك العصبية للمعرفة. يمكنك الآن إرسال صور أو ملفات لتحليلها.</div>
+            </div>
+            <div class="chat-input-area">
+                <label for="file-upload-input" class="chat-attach-btn">
+                    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                </label>
+                <input type="file" id="file-upload-input" accept="image/*" style="display: none;">
+                <div id="image-preview-container"></div>
+                <input type="text" id="chat-input-field" class="chat-input" data-translate-key="ai_input_placeholder" placeholder="تواصل مع وعيك...">
+                <button id="chat-send-button" class="chat-send-btn">➤</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="student-wallet-template">
+        <div class="glass-card wallet-balance">
+            <p class="text-sm text-secondary mb-2" data-translate-key="wallet_current_balance">رصيدك الحالي</p>
+            <p class="amount">1,480</p>
+            <p class="label" data-translate-key="wallet_poe_unit">وحدة طاقة معرفية (PoE)</p>
+        </div>
+        <div class="custom-tabs" id="wallet-tabs">
+            <div class="custom-tab active" data-tab="marketplace" data-translate-key="wallet_tab_marketplace">سوق المكافآت</div>
+            <div class="custom-tab" data-tab="nfts" data-translate-key="wallet_tab_nfts">التحف الرقمية</div>
+            <div class="custom-tab" data-tab="history" data-translate-key="wallet_tab_history">السجل</div>
+        </div>
+        <div id="marketplace" class="custom-tab-content active">
+            <div class="glass-card">
+                <h3 data-translate-key="wallet_partners_title"><span class="icon">🛍️</span>عروض من شركائنا</h3>
+                <p class="text-sm text-secondary mb-4" data-translate-key="wallet_partners_desc">جهدك الدراسي يفتح لك أبوابًا في العالم الحقيقي. استبدل وحدات الطاقة التي كسبتها بمكافآت حصرية من علامات تجارية عالمية.</p>
+                <div class="marketplace-grid">
+                    <div class="reward-card">
+                        <div class="reward-image"><svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-secondary); filter: drop-shadow(0 0 5px var(--accent-secondary));"><path d="M10 21.125a8.5 8.5 0 1 0-5-8.125"/><path d="M4 16.5V22a1 1 0 0 0 1 1h4.5"/><path d="M18 2v2"/><path d="M21 2v2"/><path d="M15 2v2"/></svg></div>
+                        <div class="reward-card-info"><h4 data-translate-key="reward_coffee">قهوة من ستاربكس</h4><p class="price">150 PoE</p><button class="redeem-btn" data-translate-key="redeem_button">استبدال</button></div>
+                    </div>
+                    <div class="reward-card">
+                         <div class="reward-image"><svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-secondary); filter: drop-shadow(0 0 5px var(--accent-secondary));"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+                        <div class="reward-card-info"><h4 data-translate-key="reward_books">خصم 20% على الكتب</h4><p class="price">500 PoE</p><button class="redeem-btn" data-translate-key="redeem_button">استبدال</button></div>
+                    </div>
+                    <div class="reward-card">
+                         <div class="reward-image"><svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-secondary); filter: drop-shadow(0 0 5px var(--accent-secondary));"><path d="M20.38 3.46 16 2a4 4 0 0 0-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.43a2 2 0 0 0 .94 1.51l2.23 1.05a2 2 0 0 0 2.08 0l2.23-1.05a2 2 0 0 1 2.08 0l2.23 1.05a2 2 0 0 0 2.08 0l2.23-1.05a2 2 0 0 0 .94-1.51l.58-3.43a2 2 0 0 0-1.34-2.23z"/><path d="M12 22v-8"/></svg></div>
+                        <div class="reward-card-info"><h4 data-translate-key="reward_voucher">قسيمة شرائية من زارا</h4><p class="price">1200 PoE</p><button class="redeem-btn" data-translate-key="redeem_button">استبدال</button></div>
+                    </div>
+                    <div class="reward-card">
+                         <div class="reward-image"><svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-secondary); filter: drop-shadow(0 0 5px var(--accent-secondary));"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+                        <div class="reward-card-info"><h4 data-translate-key="reward_cinema">تذكرة سينما</h4><p class="price">800 PoE</p><button class="redeem-btn" data-translate-key="redeem_button">استبدال</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="nfts" class="custom-tab-content">
+            <div class="glass-card">
+                <h3 data-translate-key="wallet_nft_gallery_title"><span class="icon">🖼️</span>معرض التحف الرقمية</h3>
+                <p class="text-sm text-secondary mb-4" data-translate-key="wallet_nft_gallery_desc">هذه ليست مجرد صور، بل هي إثباتات موثقة لإنجازاتك على البلوك تشين، تمنحك هوية رقمية فريدة في عالم المعرفة.</p>
+                <div class="nft-gallery">
+                    <div class="nft-card"><img src="https://placehold.co/200x240/6c79f8/000000?text=AI+101" alt="NFT"><p data-translate-key="nft_ai_mastery">إتقان مبادئ الذكاء الاصطناعي</p></div>
+                    <div class="nft-card"><img src="https://placehold.co/200x240/00f5d4/000000?text=Web3" alt="NFT"><p data-translate-key="nft_dapp_builder">بناء التطبيقات اللامركزية</p></div>
+                </div>
+            </div>
+        </div>
+        <div id="history" class="custom-tab-content">
+            <div class="glass-card">
+                <h3 data-translate-key="wallet_history_title"><span class="icon">📜</span>سجل المعاملات</h3>
+                <p class="text-sm text-secondary mb-4" data-translate-key="wallet_history_desc">تابع رحلة نمو طاقتك المعرفية وكل معاملة تقوم بها. الشفافية هي أساس الثقة في اقتصادنا.</p>
+                <div class="list-item"><div><p>+ 50 PoE</p><span class="text-sm text-secondary" data-translate-key="history_item1_desc">إكمال واجب الفيزياء</span></div><span class="text-sm text-accent-secondary" data-translate-key="history_item1_time">اليوم</span></div>
+                <div class="list-item"><div><p>- 150 PoE</p><span class="text-sm text-secondary" data-translate-key="history_item2_desc">استبدال قهوة من ستاربكس</span></div><span class="text-sm" style="color: #e85649;" data-translate-key="history_item2_time">الأمس</span></div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="student-radio-template">
+        <div class="glass-card music-player">
+            <h3 data-translate-key="radio_focus_music_title"><span class="icon">🎵</span>موسيقى للتركيز</h3>
+            <div class="album-art">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-primary); opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+            </div>
+            <div class="track-info">
+                <h4 id="track-title">Bliss</h4>
+                <p id="track-artist">Luke Bergs</p>
+            </div>
+            <div class="progress-bar-container"><div id="progress-bar" class="progress-bar"></div></div>
+            <div class="player-controls">
+                <button class="player-btn" id="prev-btn">⏮</button>
+                <button class="player-btn" id="play-pause-btn">▶️</button>
+                <button class="player-btn" id="next-btn">⏭</button>
+            </div>
+            <audio id="audio-player" src="https://unimateme.com/Luke-Bergs-Bliss(chosic.com).mp3" loop></audio>
+        </div>
+        <div class="glass-card live-stream-card">
+            <h3 data-translate-key="radio_live_stream_title"><span class="icon">🔴</span>البث المباشر</h3>
+            <div class="live-stream-placeholder">
+                <div class="live-badge" data-translate-key="radio_live_badge">مباشر</div>
+                ▶️
+            </div>
+             <div class="list-item" style="padding-top: 1.5rem; border-top: 1px solid var(--border-color); margin-top: 1.5rem;">
+                <div>
+                    <p class="font-bold" data-translate-key="radio_live_session_title">جلسة مع خبير: مستقبل الذكاء الاصطناعي</p>
+                    <span class="text-sm text-secondary" data-translate-key="radio_live_session_host">مع د. أحمد</span>
+                </div>
+                <span class="text-sm text-accent-secondary" data-translate-key="radio_live_session_viewers">1.2k مشاهد</span>
+            </div>
+        </div>
+    </template>
+
+    <template id="student-sync-template">
+        <div id="sync-lobby">
+            <div class="glass-card">
+                <h3 data-translate-key="sync_create_title"><span class="icon">➕</span>إنشاء جلسة تركيز جديدة</h3>
+                <p class="text-sm text-secondary mb-4" data-translate-key="sync_create_desc">ابدأ جلسة جديدة وادعُ زملائك لتحويل المذاكرة إلى تحدٍ جماعي.</p>
+                <button class="primary-btn" id="create-session-btn" data-translate-key="sync_create_button">ابدأ الآن</button>
+            </div>
+            <div class="glass-card">
+                <h3 data-translate-key="sync_join_title"><span class="icon">🌍</span>الانضمام إلى جلسة عامة</h3>
+                <div class="list-item"><div><p data-translate-key="sync_join_session1_name">مذاكرة "هندسة البرمجيات"</p><span class="text-sm text-secondary" data-translate-key="sync_join_session1_members">4/10 مشاركين</span></div><button class="text-accent-secondary" data-translate-key="sync_join_button">انضم</button></div>
+                <div class="list-item"><div><p data-translate-key="sync_join_session2_name">مراجعة لاختبار التفاضل</p><span class="text-sm text-secondary" data-translate-key="sync_join_session2_members">7/10 مشاركين</span></div><button class="text-accent-secondary" data-translate-key="sync_join_button">انضم</button></div>
+            </div>
+        </div>
+        <div id="sync-active-session" style="display: none;">
+             <div class="glass-card">
+                <p class="text-center text-secondary" data-translate-key="sync_active_session_title">جلسة تركيز نشطة</p>
+                <div class="timer-display">89:59</div>
+                <div>
+                    <p class="text-sm text-secondary" data-translate-key="sync_active_session_energy">طاقة التركيز الجماعية</p>
+                    <div class="focus-energy-bar"><div class="focus-energy-fill"></div></div>
+                </div>
+            </div>
+            <div class="glass-card">
+                <h3 data-translate-key="sync_active_session_participants_title"><span class="icon">👥</span>المشاركون</h3>
+                <p data-translate-key="sync_active_session_participants_list">أنت، أحمد، فاطمة، محمد</p>
+            </div>
+            <button class="primary-btn" style="background-color: #e85649;" data-translate-key="sync_active_session_leave_button">مغادرة الجلسة</button>
+        </div>
+    </template>
+
+    <template id="student-matrix-template">
+        <div class="custom-tabs">
+            <div class="custom-tab active" data-tab="courses" data-translate-key="matrix_tab_courses">المواد</div>
+            <div class="custom-tab" data-tab="schedule" data-translate-key="matrix_tab_schedule">الجدول</div>
+            <div class="custom-tab" data-tab="tasks" data-translate-key="matrix_tab_tasks">المهام</div>
+            <div class="custom-tab" data-tab="settings" data-translate-key="matrix_tab_settings">الإعدادات</div>
+        </div>
+        <div id="courses" class="custom-tab-content active">
+            <div class="glass-card">
+                <div class="list-item" data-course-id="ai" data-course-name-key="course_ai_principles"><div><p data-translate-key="course_ai_principles">مبادئ الذكاء الاصطناعي</p><span class="text-sm text-secondary">د. علي</span></div></div>
+                <div class="list-item" data-course-id="web" data-course-name-key="course_web_dev"><div><p data-translate-key="course_web_dev">تطوير الويب المتقدم</p><span class="text-sm text-secondary">د. سارة</span></div></div>
+                <button class="primary-btn" style="margin-top: 1rem;" data-translate-key="add_new_course_button">إضافة مادة جديدة</button>
+            </div>
+        </div>
+        <div id="schedule" class="custom-tab-content">
+            <div class="glass-card">
+                <h3 data-translate-key="matrix_schedule_title"><span class="icon">🗓️</span> الجدول الأسبوعي</h3>
+                <div class="schedule-grid-container" style="--hour-height: 60px; --start-hour: 8;">
+                    <div class="header" style="grid-column: 1;"></div>
+                    <div class="header" style="grid-column: 2;" data-translate-key="schedule_day_sun">الأحد</div>
+                    <div class="header" style="grid-column: 3;" data-translate-key="schedule_day_mon">الاثنين</div>
+                    <div class="header" style="grid-column: 4;" data-translate-key="schedule_day_tue">الثلاثاء</div>
+                    <div class="header" style="grid-column: 5;" data-translate-key="schedule_day_wed">الأربعاء</div>
+                    <div class="header" style="grid-column: 6;" data-translate-key="schedule_day_thu">الخميس</div>
+                    
+                    <div style="grid-column: 1; grid-row: 2 / 12; display: flex; flex-direction: column; justify-content: space-around;">
+                        <div class="time-label">08:00</div>
+                        <div class="time-label">09:00</div>
+                        <div class="time-label">10:00</div>
+                        <div class="time-label">11:00</div>
+                        <div class="time-label">12:00</div>
+                        <div class="time-label">13:00</div>
+                        <div class="time-label">14:00</div>
+                        <div class="time-label">15:00</div>
+                    </div>
+
+                    <div style="grid-column: 2 / 7; grid-row: 2 / 12; position: relative; height: 480px;">
+                        <div class="schedule-day-column" style="position: absolute; width: 20%; left: 0%; top: 0; bottom: 0;">
+                             </div>
+                        <div class="schedule-day-column" style="position: absolute; width: 20%; left: 20%; top: 0; bottom: 0;">
+                             <div class="schedule-event" style="--event-start-hour: 11; --event-duration-min: 50; --event-color: #00f5d4;">
+                                <strong data-translate-key="schedule_course_chem">الكيمياء</strong>
+                                <span data-translate-key="schedule_hall_201">القاعة 201</span>
+                            </div>
+                        </div>
+                        <div class="schedule-day-column" style="position: absolute; width: 20%; left: 40%; top: 0; bottom: 0;">
+                             <div class="schedule-event" style="--event-start-hour: 9; --event-duration-min: 110; --event-color: #8a98ff;">
+                                <strong data-translate-key="schedule_course_web">تطوير الويب</strong>
+                                <span data-translate-key="schedule_hall_105">القاعة 105</span>
+                            </div>
+                        </div>
+                        <div class="schedule-day-column" style="position: absolute; width: 60%; top: 0; bottom: 0;" :style="{ left: currentLang === 'ar' ? 'auto' : '60%', right: currentLang === 'ar' ? '60%' : 'auto' }">
+                            <div class="schedule-event" style="--event-start-hour: 13; --event-duration-min: 90; --event-color: #fca311;">
+                                <strong data-translate-key="schedule_course_ai">الذكاء الاصطناعي</strong>
+                                <span data-translate-key="schedule_hall_303">القاعة 303</span>
+                            </div>
+                        </div>
+                        <div class="schedule-day-column" style="position: absolute; width: 20%; left: 80%; top: 0; bottom: 0;">
+                             </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="tasks" class="custom-tab-content">
+             <div class="glass-card">
+                <div class="list-item"><div><p data-translate-key="task_neural_networks">واجب الشبكات العصبية</p><span class="text-sm text-secondary" data-translate-key="task_due_3_days">ينتهي بعد 3 أيام</span></div></div>
+                <button class="primary-btn" style="margin-top: 1rem;" data-translate-key="add_new_task_button">إضافة مهمة جديدة</button>
+            </div>
+        </div>
+        <div id="settings" class="custom-tab-content">
+             <div class="glass-card">
+                <h3 data-translate-key="matrix_settings_api_title"><span class="icon">🔑</span>إدارة مفتاح API</h3>
+                <p class="text-sm text-secondary mb-4" data-translate-key="matrix_settings_api_desc">لتمكين المساعد الذكي، يرجى إدخال مفتاح Gemini API الخاص بك. يمكنك الحصول عليه من Google AI Studio.</p>
+                <input type="text" id="api-key-input" class="chat-input" data-translate-key="matrix_settings_api_placeholder" placeholder="أدخل مفتاح API هنا...">
+                <button class="primary-btn" id="save-api-key-btn" style="margin-top: 1rem;" data-translate-key="matrix_settings_api_save_button">حفظ المفتاح</button>
+            </div>
+            <div class="glass-card">
+                <div class="lang-toggle-container">
+                    <h3 data-translate-key="matrix_settings_lang_title"><span class="icon">🌐</span>اللغة</h3>
+                    <div class="lang-toggle">
+                        <button id="lang-en-btn">EN</button>
+                        <button id="lang-ar-btn" class="active">AR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="student-lab-template">
+        <div class="glass-card">
+            <h3 data-translate-key="lab_challenges_title"><span class="icon">🎯</span> تحديات مقترحة</h3>
+            <div class="list-item challenge-card" data-challenge-id="web_portfolio">
+                <div>
+                    <p data-translate-key="lab_challenge1_title">بناء صفحة سيرة ذاتية</p>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);" data-translate-key="lab_challenge1_course">تابع لمادة: تطوير الويب المتقدم</span>
+                </div>
+            </div>
+            <div class="list-item challenge-card" data-challenge-id="ai_classifier">
+                 <div>
+                    <p data-translate-key="lab_challenge2_title">تصنيف صور بسيطة</p>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);" data-translate-key="lab_challenge2_course">تابع لمادة: مبادئ الذكاء الاصطناعي</span>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="challenge-workspace-template">
+        <div class="glass-card">
+            <h3 id="challenge-title-workspace"></h3>
+            <p id="challenge-desc-workspace" style="margin-bottom: 1rem; color: var(--text-secondary);"></p>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700;" data-translate-key="lab_code_editor_label">محرر الكود:</label>
+            <div class="code-editor-mock"></div>
+        </div>
+         <div class="glass-card">
+            <h3 data-translate-key="lab_ai_assistant_title"><span class="icon">🤖</span> مساعد Uni-AI</h3>
+            <div class="chat-window" style="height: 200px;">
+                <div class="chat-messages">
+                    <div class="chat-message ai" data-translate-key="lab_ai_welcome">مرحباً! أنا هنا لمساعدتك في هذا التحدي.</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" data-translate-key="lab_ai_prompt" placeholder="اطلب مساعدة أو استفسر...">
+                    <button class="chat-send-btn">➤</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="student-course-detail-template">
+        <div class="glass-card">
+            <h3 data-translate-key="course_detail_link_title"><span class="icon">🔗</span> رابط المحاضرة</h3>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                <input type="url" id="lecture-link-input" class="chat-input" placeholder="الصق رابط المحاضرة هنا...">
+                <button id="save-lecture-link-btn" class="primary-btn" style="padding: 0 1rem; flex-shrink: 0;" data-translate-key="course_detail_link_save">حفظ</button>
+            </div>
+            <p class="text-sm text-secondary" data-translate-key="course_detail_link_desc">سيتم استخدام هذا الرابط لإرسال تذكيرات والانضمام السريع.</p>
+        </div>
+        <div class="glass-card">
+            <h3 data-translate-key="course_detail_record_title"><span class="icon">🔴</span> تسجيل المحاضرة</h3>
+            <p class="text-sm text-secondary" style="margin-bottom: 1rem;" data-translate-key="course_detail_record_desc">ابدأ تسجيلاً جديداً للمحاضرة لحفظها والرجوع إليها لاحقاً.</p>
+            <button id="record-lecture-btn" class="primary-btn">
+                <span data-translate-key="course_detail_record_start">بدء التسجيل</span>
+            </button>
+        </div>
+        <div class="glass-card">
+            <h3 data-translate-key="course_detail_recordings_title"><span class="icon">📼</span> التسجيلات المحفوظة</h3>
+            <div id="recordings-list">
+                <p class="text-secondary" data-translate-key="course_detail_no_recordings">لا توجد تسجيلات لهذه المادة بعد.</p>
+            </div>
+        </div>
+    </template>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Translations Object ---
+        const translations = {
+            ar: {
+                entry_prompt: "انقر للدخول",
+                cognitive_hub_core: "المحور<br>المعرفي",
+                hub_nav_dashboard: "الرئيسية",
+                hub_nav_ai_chat: "المساعد",
+                hub_nav_wallet: "الخزنة",
+                hub_nav_radio: "البث",
+                hub_nav_sync: "التزامن",
+                view_title_dashboard: "لوحة التحكم",
+                view_title_ai_chat: "المساعد الذكي",
+                view_title_wallet: "الخزنة الرقمية",
+                view_title_radio: "بث التركيز",
+                view_title_sync: "التزامن المعرفي",
+                view_title_matrix: "المنظومة الدراسية",
+                dashboard_next_lecture_title: "المحاضرة القادمة",
+                dashboard_next_lecture_name: "محاضرة الكيمياء",
+                dashboard_next_lecture_time: "الوقت: 11:00 صباحاً",
+                dashboard_next_lecture_hall: "القاعة 201",
+                dashboard_next_lecture_building: "مبنى الهندسة",
+                dashboard_uniai_pulse_title: "نبض Uni-AI",
+                dashboard_uniai_pulse_desc: "طاقتك المعرفية مرتفعة اليوم. إنها فرصة مثالية للتعمق في مادة \"الذكاء الاصطناعي\" لمدة 60 دقيقة لتحقيق أقصى استفادة.",
+                dashboard_effort_stream_title: "مجرى الجهد",
+                chart_effort_label: "مجرى الجهد",
+                chart_days: ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس'],
+                ai_welcome_message: "أنا Uni-AI، واجهتك العصبية للمعرفة. يمكنك الآن إرسال صور أو ملفات لتحليلها.",
+                ai_input_placeholder: "تواصل مع وعيك...",
+                ai_api_key_prompt: "يرجى إدخال مفتاح Gemini API الخاص بك في قسم الإعدادات أولاً.",
+                ai_error_message: "عذرًا، حدث خطأ أثناء التواصل مع المساعد. يرجى التأكد من صحة مفتاح API والمحاولة مرة أخرى.",
+                ai_no_answer: "لم أتمكن من العثور على إجابة. هل يمكنك إعادة صياغة سؤالك؟",
+                matrix_tab_courses: "المواد",
+                matrix_tab_schedule: "الجدول",
+                matrix_tab_tasks: "المهام",
+                matrix_tab_settings: "الإعدادات",
+                matrix_settings_api_title: "إدارة مفتاح API",
+                matrix_settings_api_desc: "لتمكين المساعد الذكي، يرجى إدخال مفتاح Gemini API الخاص بك. يمكنك الحصول عليه من Google AI Studio.",
+                matrix_settings_api_placeholder: "أدخل مفتاح API هنا...",
+                matrix_settings_api_save_button: "حفظ المفتاح",
+                matrix_settings_api_saved_alert: "تم حفظ المفتاح بنجاح!",
+                matrix_settings_lang_title: "اللغة",
+                matrix_schedule_title: "الجدول الأسبوعي",
+                schedule_day_sun: "الأحد",
+                schedule_day_mon: "الاثنين",
+                schedule_day_tue: "الثلاثاء",
+                schedule_day_wed: "الأربعاء",
+                schedule_day_thu: "الخميس",
+                schedule_course_chem: "الكيمياء",
+                schedule_hall_201: "القاعة 201",
+                schedule_course_web: "تطوير الويب",
+                schedule_hall_105: "القاعة 105",
+                schedule_course_ai: "الذكاء الاصطناعي",
+                schedule_hall_303: "القاعة 303",
+                radio_focus_music_title: "موسيقى للتركيز",
+                radio_live_stream_title: "البث المباشر",
+                radio_live_badge: "مباشر",
+                radio_live_session_title: "جلسة مع خبير: مستقبل الذكاء الاصطناعي",
+                radio_live_session_host: "مع د. أحمد",
+                radio_live_session_viewers: "1.2k مشاهد",
+                sync_create_title: "إنشاء جلسة تركيز جديدة",
+                sync_create_desc: "ابدأ جلسة جديدة وادعُ زملائك لتحويل المذاكرة إلى تحدٍ جماعي.",
+                sync_create_button: "ابدأ الآن",
+                sync_join_title: "الانضمام إلى جلسة عامة",
+                sync_join_session1_name: "مذاكرة \"هندسة البرمجيات\"",
+                sync_join_session1_members: "4/10 مشاركين",
+                sync_join_session2_name: "مراجعة لاختبار التفاضل",
+                sync_join_session2_members: "7/10 مشاركين",
+                sync_join_button: "انضم",
+                wallet_current_balance: "رصيدك الحالي",
+                wallet_poe_unit: "وحدة طاقة معرفية (PoE)",
+                wallet_tab_marketplace: "سوق المكافآت",
+                wallet_tab_nfts: "التحف الرقمية",
+                wallet_tab_history: "السجل",
+                wallet_partners_title: "عروض من شركائنا",
+                wallet_partners_desc: "جهدك الدراسي يفتح لك أبوابًا في العالم الحقيقي. استبدل وحدات الطاقة التي كسبتها بمكافآت حصرية.",
+                reward_coffee: "قهوة من ستاربكس",
+                reward_books: "خصم 20% على الكتب",
+                reward_voucher: "قسيمة شرائية من زارا",
+                reward_cinema: "تذكرة سينما",
+                redeem_button: "استبدال",
+                wallet_nft_gallery_title: "معرض التحف الرقمية",
+                wallet_nft_gallery_desc: "هذه ليست مجرد صور، بل هي إثباتات موثقة لإنجازاتك على البلوك تشين، تمنحك هوية رقمية فريدة في عالم المعرفة.",
+                nft_ai_mastery: "إتقان مبادئ الذكاء الاصطناعي",
+                nft_dapp_builder: "بناء التطبيقات اللامركزية",
+                wallet_history_title: "سجل المعاملات",
+                wallet_history_desc: "تابع رحلة نمو طاقتك المعرفية وكل معاملة تقوم بها. الشفافية هي أساس الثقة في اقتصادنا.",
+                history_item1_desc: "إكمال واجب الفيزياء",
+                history_item1_time: "اليوم",
+                history_item2_desc: "استبدال قهوة من ستاربكس",
+                history_item2_time: "الأمس",
+                sync_active_session_title: "جلسة تركيز نشطة",
+                sync_active_session_energy: "طاقة التركيز الجماعية",
+                sync_active_session_participants_title: "المشاركون",
+                sync_active_session_participants_list: "أنت، أحمد، فاطمة، محمد",
+                sync_active_session_leave_button: "مغادرة الجلسة",
+                course_ai_principles: "مبادئ الذكاء الاصطناعي",
+                course_web_dev: "تطوير الويب المتقدم",
+                add_new_course_button: "إضافة مادة جديدة",
+                task_neural_networks: "واجب الشبكات العصبية",
+                task_due_3_days: "ينتهي بعد 3 أيام",
+                add_new_task_button: "إضافة مهمة جديدة",
+                matrix_add_course_prompt_name: "أدخل اسم المادة:",
+                matrix_add_course_prompt_instructor: "أدخل اسم المحاضر:",
+                matrix_add_task_prompt_name: "أدخل اسم المهمة:",
+                matrix_add_task_prompt_due: "أدخل تاريخ الانتهاء:",
+                hub_nav_market: "سوق المعرفة",
+                view_title_market: "سوق المعرفة",
+                market_title: "سوق المعرفة",
+                market_intro: "هنا يمكنك طلب المساعدة أو تقديمها للآخرين.",
+                market_submit_help: "أرسل طلب مساعدة",
+                market_help_list: "قائمة طلبات المساعدة",
+                view_title_notifications: "الإشعارات",
+                notifications_title: "الإشعارات",
+                notifications_settings_title: "إعدادات الإشعارات",
+                notifications_sample1: "لا توجد إشعارات حتى الآن.",
+                notify_change_lecture: "تنبيه تغيير المحاضرة",
+                notify_change_lecture_desc: "احصل على إشعار عند تغيير مكان أو موعد المحاضرة",
+                notify_rewards: "تنبيه المكافآت",
+                notify_rewards_desc: "تلقَ إشعار عند توفر مكافآت جديدة",
+                hub_nav_lab: "المختبر",
+                view_title_lab: "المختبر المعرفي",
+                lab_challenges_title: "تحديات مقترحة",
+                lab_challenge1_title: "بناء صفحة سيرة ذاتية",
+                lab_challenge1_course: "تابع لمادة: تطوير الويب المتقدم",
+                lab_challenge2_title: "تصنيف صور بسيطة",
+                lab_challenge2_course: "تابع لمادة: مبادئ الذكاء الاصطناعي",
+                lab_code_editor_label: "محرر الكود:",
+                lab_ai_assistant_title: "مساعد Uni-AI",
+                lab_ai_welcome: "مرحباً! أنا هنا لمساعدتك في هذا التحدي.",
+                lab_ai_prompt: "اطلب مساعدة أو استفسر...",
+                view_title_challenge_workspace: "مساحة عمل التحدي",
+                view_title_course_detail: "تفاصيل المادة",
+                course_detail_link_title: "رابط المحاضرة",
+                course_detail_link_save: "حفظ",
+                course_detail_link_desc: "سيتم استخدام هذا الرابط لإرسال تذكيرات والانضمام السريع.",
+                course_detail_record_title: "تسجيل المحاضرة",
+                course_detail_record_desc: "ابدأ تسجيلاً جديداً للمحاضرة لحفظها والرجوع إليها لاحقاً.",
+                course_detail_record_start: "بدء التسجيل",
+                course_detail_record_stop: "إيقاف التسجيل",
+                course_detail_recordings_title: "التسجيلات المحفوظة",
+                course_detail_no_recordings: "لا توجد تسجيلات لهذه المادة بعد."
+            },
+            en: {
+                entry_prompt: "Click to Enter",
+                cognitive_hub_core: "Cognitive<br>Hub",
+                hub_nav_dashboard: "Dashboard",
+                hub_nav_ai_chat: "AI Assistant",
+                hub_nav_wallet: "Wallet",
+                hub_nav_radio: "Radio",
+                hub_nav_sync: "Sync",
+                view_title_dashboard: "Dashboard",
+                view_title_ai_chat: "AI Assistant",
+                view_title_wallet: "Digital Wallet",
+                view_title_radio: "Focus Radio",
+                view_title_sync: "Cognitive Sync",
+                view_title_matrix: "Academic Matrix",
+                dashboard_next_lecture_title: "Next Lecture",
+                dashboard_next_lecture_name: "Chemistry Lecture",
+                dashboard_next_lecture_time: "Time: 11:00 AM",
+                dashboard_next_lecture_hall: "Hall 201",
+                dashboard_next_lecture_building: "Engineering Bldg",
+                dashboard_uniai_pulse_title: "Uni-AI Pulse",
+                dashboard_uniai_pulse_desc: "Your cognitive energy is high today. It's a perfect opportunity to dive into 'Artificial Intelligence' for 60 minutes for maximum benefit.",
+                dashboard_effort_stream_title: "Effort Stream",
+                chart_effort_label: "Effort Stream",
+                chart_days: ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'],
+                ai_welcome_message: "I am Uni-AI, your neural interface to knowledge. You can now send images or files for analysis.",
+                ai_input_placeholder: "Interface with your consciousness...",
+                ai_api_key_prompt: "Please enter your Gemini API key in the settings section first.",
+                ai_error_message: "Sorry, an error occurred while contacting the assistant. Please check your API key and try again.",
+                ai_no_answer: "I couldn't find an answer. Could you rephrase your question?",
+                matrix_tab_courses: "Courses",
+                matrix_tab_schedule: "Schedule",
+                matrix_tab_tasks: "Tasks",
+                matrix_tab_settings: "Settings",
+                matrix_settings_api_title: "API Key Management",
+                matrix_settings_api_desc: "To enable the AI assistant, please enter your Gemini API key. You can get it from Google AI Studio.",
+                matrix_settings_api_placeholder: "Enter API key here...",
+                matrix_settings_api_save_button: "Save Key",
+                matrix_settings_api_saved_alert: "API Key saved successfully!",
+                matrix_settings_lang_title: "Language",
+                matrix_schedule_title: "Weekly Schedule",
+                schedule_day_sun: "Sunday",
+                schedule_day_mon: "Monday",
+                schedule_day_tue: "Tuesday",
+                schedule_day_wed: "Wednesday",
+                schedule_day_thu: "Thursday",
+                schedule_course_chem: "Chemistry",
+                schedule_hall_201: "Hall 201",
+                schedule_course_web: "Web Dev",
+                schedule_hall_105: "Hall 105",
+                schedule_course_ai: "AI Principles",
+                schedule_hall_303: "Hall 303",
+                radio_focus_music_title: "Focus Music",
+                radio_live_stream_title: "Live Stream",
+                radio_live_badge: "LIVE",
+                radio_live_session_title: "Expert Session: Future of AI",
+                radio_live_session_host: "With Dr. Ahmed",
+                radio_live_session_viewers: "1.2k watching",
+                sync_create_title: "Create New Focus Session",
+                sync_create_desc: "Start a new session and invite your peers to turn studying into a group challenge.",
+                sync_create_button: "Start Now",
+                sync_join_title: "Join a Public Session",
+                sync_join_session1_name: "Study 'Software Engineering'",
+                sync_join_session1_members: "4/10 members",
+                sync_join_session2_name: "Calculus Test Review",
+                sync_join_session2_members: "7/10 members",
+                sync_join_button: "Join",
+                wallet_current_balance: "Current Balance",
+                wallet_poe_unit: "Point of Effort (PoE)",
+                wallet_tab_marketplace: "Reward Market",
+                wallet_tab_nfts: "Digital Artifacts",
+                wallet_tab_history: "History",
+                wallet_partners_title: "Offers From Our Partners",
+                wallet_partners_desc: "Your academic effort opens doors in the real world. Redeem your earned PoE for exclusive rewards.",
+                reward_coffee: "Starbucks Coffee",
+                reward_books: "20% Off Books",
+                reward_voucher: "Zara Gift Card",
+                reward_cinema: "Cinema Ticket",
+                redeem_button: "Redeem",
+                wallet_nft_gallery_title: "Digital Artifacts Gallery",
+                wallet_nft_gallery_desc: "These aren't just images; they are on-chain proofs of your achievements, granting you a unique digital identity in the world of knowledge.",
+                hub_nav_market: "Knowledge Market",
+                view_title_market: "Knowledge Market",
+                market_title: "Knowledge Market",
+                market_intro: "Here you can request help or offer it.",
+                market_submit_help: "Submit Help Request",
+                market_help_list: "Help Requests",
+                view_title_notifications: "Notifications",
+                notifications_title: "Notifications",
+                notifications_settings_title: "Notification Settings",
+                notifications_sample1: "No notifications yet.",
+                notify_change_lecture: "Lecture Change Alert",
+                notify_change_lecture_desc: "Get notified when lecture time or venue changes",
+                notify_rewards: "Reward Alert",
+                notify_rewards_desc: "Receive a notification when new rewards are available",
+                nft_ai_mastery: "AI Principles Mastery",
+                nft_dapp_builder: "dApp Builder",
+                wallet_history_title: "Transaction Log",
+                wallet_history_desc: "Track your PoE growth and every transaction you make. Transparency is the foundation of our economy.",
+                history_item1_desc: "Completed Physics homework",
+                history_item1_time: "Today",
+                history_item2_desc: "Redeemed Starbucks Coffee",
+                history_item2_time: "Yesterday",
+                sync_active_session_title: "Active Focus Session",
+                sync_active_session_energy: "Group Focus Energy",
+                sync_active_session_participants_title: "Participants",
+                sync_active_session_participants_list: "You, Ahmed, Fatima, Mohammed",
+                sync_active_session_leave_button: "Leave Session",
+                course_ai_principles: "AI Principles",
+                course_web_dev: "Advanced Web Development",
+                add_new_course_button: "Add New Course",
+                task_neural_networks: "Neural Networks Assignment",
+                task_due_3_days: "Due in 3 days",
+                add_new_task_button: "Add New Task",
+                matrix_add_course_prompt_name: "Enter course name:",
+                matrix_add_course_prompt_instructor: "Enter instructor name:",
+                matrix_add_task_prompt_name: "Enter task name:",
+                matrix_add_task_prompt_due: "Enter due date:",
+                hub_nav_lab: "Lab",
+                view_title_lab: "Cognition Lab",
+                lab_challenges_title: "Suggested Challenges",
+                lab_challenge1_title: "Build a Portfolio Page",
+                lab_challenge1_course: "Related Course: Advanced Web Development",
+                lab_challenge2_title: "Simple Image Classifier",
+                lab_challenge2_course: "Related Course: AI Principles",
+                lab_code_editor_label: "Code Editor:",
+                lab_ai_assistant_title: "Uni-AI Assistant",
+                lab_ai_welcome: "Hello! I'm here to help you with this challenge.",
+                lab_ai_prompt: "Ask for help or inquire...",
+                view_title_challenge_workspace: "Challenge Workspace",
+                view_title_course_detail: "Course Details",
+                course_detail_link_title: "Lecture Link",
+                course_detail_link_save: "Save",
+                course_detail_link_desc: "This link will be used for quick access and reminders.",
+                course_detail_record_title: "Lecture Recording",
+                course_detail_record_desc: "Start a new recording of the lecture to save and review later.",
+                course_detail_record_start: "Start Recording",
+                course_detail_record_stop: "Stop Recording",
+                course_detail_recordings_title: "Saved Recordings",
+                course_detail_no_recordings: "No recordings for this course yet."
+            }
+        };
+
+        // Data for Lab Challenges
+        const challengesData = {
+            web_portfolio: {
+                titleKey: 'lab_challenge1_title',
+                description: 'استخدم HTML و CSS لإنشاء صفحة ويب شخصية تعرض مهاراتك ومشاريعك. ركز على التصميم النظيف والمتجاوب.',
+                code: '<!DOCTYPE html>\n<html lang="ar" dir="rtl">\n<head>\n    <title>ملفي الشخصي</title>\n    <style>\n        body { font-family: sans-serif; }\n    </style>\n</head>\n<body>\n    <h1>مرحباً بك في صفحتي</h1>\n</body>\n</html>'
+            },
+            ai_classifier: {
+                titleKey: 'lab_challenge2_title',
+                description: 'اكتب دالة Python بسيطة يمكنها التمييز بين صورتين (قطة مقابل كلب) بناءً على بيانات وهمية. لا حاجة لمكتبات تعلم آلي حقيقية.',
+                code: "def classify_image(image_data):\n    # لنفترض أن مجموع البكسلات المرتفع يعني كلب\n    if sum(image_data) > 500:\n        return 'كلب'\n    else:\n        return 'قطة'\n\n# اختبار\ncat_image = [10, 20, 5, 15]\nprint(f\"الصورة هي: {classify_image(cat_image)}\")"
+            }
+        };
+
+        // --- Global Variables ---
+        const appContainer = document.querySelector('.app-container');
+        const canvas = document.getElementById('neural-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, appContainer.clientWidth / appContainer.clientHeight, 0.1, 1000);
+        
+        let effortChart;
+        let chatHistory = [];
+        let selectedImageBase64 = null;
+        let audioPlayer = null;
+        let currentLang = 'ar';
+        let introAudioPlayer;
+
+        // --- Initial Setup ---
+        function init3DBackground() {
+            renderer.setSize(appContainer.clientWidth, appContainer.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            const particlesCount = 5000;
+            const positions = new Float32Array(particlesCount * 3);
+            for (let i = 0; i < particlesCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 10;
+            }
+            const particlesGeometry = new THREE.BufferGeometry();
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                color: 0x8a98ff,
+                size: 0.02,
+                transparent: true,
+                blending: THREE.AdditiveBlending
+            });
+            const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particleSystem);
+            camera.position.z = 5;
+            const clock = new THREE.Clock();
+            function animate() {
+                const elapsedTime = clock.getElapsedTime();
+                particleSystem.rotation.y = elapsedTime * 0.1;
+                requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            window.addEventListener('resize', () => {
+                const width = appContainer.clientWidth;
+                const height = appContainer.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+        }
+
+        // --- Language & Translation ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.dataset.translateKey;
+                const translation = translations[lang][key] || translations['ar'][key];
+                if (translation) {
+                    if (el.placeholder) {
+                        el.placeholder = translation;
+                    } else {
+                        el.innerHTML = translation;
+                    }
+                }
+            });
+
+            const langArBtn = document.getElementById('lang-ar-btn');
+            const langEnBtn = document.getElementById('lang-en-btn');
+            if (langArBtn && langEnBtn) {
+                langArBtn.classList.toggle('active', lang === 'ar');
+                langEnBtn.classList.toggle('active', lang === 'en');
+            }
+            
+            localStorage.setItem('unimate-lang', lang);
+            
+            const effortChartCanvas = document.getElementById('effort-chart');
+            if (effortChart && effortChartCanvas) {
+                initEffortChart();
+            }
+        }
+
+        function loadLanguage() {
+            const savedLang = localStorage.getItem('unimate-lang') || 'ar';
+            setLanguage(savedLang);
+        }
+
+        // --- Audio Setup ---
+        function initIntroAudio() {
+            introAudioPlayer = document.getElementById('intro-audio');
+            if(introAudioPlayer) {
+               introAudioPlayer.volume = 0.5;
+            }
+        }
+
+        function playIntroSound() {
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+            if (introAudioPlayer) {
+                introAudioPlayer.play().catch(error => console.error("Intro audio playback failed:", error));
+            }
+        }
+
+        // --- App Logic ---
+        const screens = document.querySelectorAll('.screen');
+        const detailViewContainer = document.getElementById('detail-view-container');
+        const detailViewContent = document.getElementById('detail-view-content');
+        const detailViewTitle = document.getElementById('detail-view-title');
+        const closeViewBtn = document.querySelector('.close-view-btn');
+        
+        function switchScreen(screenId) {
+            screens.forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId)?.classList.add('active');
+        }
+
+        function handleTabSwitching(container) {
+            const tabs = container.querySelectorAll('.custom-tab');
+            const contents = container.querySelectorAll('.custom-tab-content');
+            if (!tabs.length || !contents.length) return;
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const targetId = tab.dataset.tab;
+                    contents.forEach(content => {
+                        content.classList.toggle('active', content.id === targetId);
+                    });
+                });
+            });
+        }
+        
+        function setupDetailView(viewId, titleKey, context = {}) {
+            const template = document.getElementById(`${viewId}-template`);
+            const title = context.title || translations[currentLang][titleKey] || titleKey;
+            detailViewTitle.textContent = title;
+
+            if(template) {
+                detailViewContent.innerHTML = template.innerHTML;
+                detailViewContainer.classList.add('active');
+                
+                // Post-render setup
+                if (viewId === 'student-dashboard') initEffortChart();
+                if (viewId === 'student-wallet') handleTabSwitching(detailViewContent);
+                if (viewId === 'student-ai-chat') setupChat();
+                if (viewId === 'student-radio') setupRadio();
+                if (viewId === 'student-sync') {
+                    const createBtn = detailViewContent.querySelector('#create-session-btn');
+                    const lobby = detailViewContent.querySelector('#sync-lobby');
+                    const activeSession = detailViewContent.querySelector('#sync-active-session');
+                    if (createBtn && lobby && activeSession) {
+                        createBtn.addEventListener('click', () => {
+                            lobby.style.display = 'none';
+                            activeSession.style.display = 'block';
+                        });
+                    }
+                }
+                if (viewId === 'student-matrix') setupMatrix();
+                if (viewId === 'student-notifications') setupNotifications();
+                if (viewId === 'student-market') setupKnowledgeMarket();
+                if (viewId === 'student-lab') setupLabView();
+                if (viewId === 'challenge-workspace') setupWorkspaceView(context);
+                if (viewId === 'student-course-detail') setupCourseDetailView(context); // [NEW]
+                
+                setLanguage(currentLang);
+            }
+        }
+        
+        function setupMatrix() {
+            handleTabSwitching(detailViewContent);
+            const apiKeyInput = document.getElementById('api-key-input');
+            const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+            if(apiKeyInput && saveApiKeyBtn) {
+                apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
+                saveApiKeyBtn.addEventListener('click', () => {
+                    localStorage.setItem('geminiApiKey', apiKeyInput.value);
+                    alert(translations[currentLang].matrix_settings_api_saved_alert);
+                });
+            }
+            const langEnBtn = document.getElementById('lang-en-btn');
+            const langArBtn = document.getElementById('lang-ar-btn');
+            if (langEnBtn && langArBtn) {
+                langEnBtn.addEventListener('click', () => setLanguage('en'));
+                langArBtn.addEventListener('click', () => setLanguage('ar'));
+            }
+
+            // Make course items clickable
+            detailViewContent.querySelectorAll('#courses .list-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const courseId = item.dataset.courseId;
+                    const courseNameKey = item.dataset.courseNameKey;
+                    const courseName = translations[currentLang][courseNameKey] || 'Course Details';
+                    setupDetailView('student-course-detail', 'view_title_course_detail', { id: courseId, title: courseName });
+                });
+            });
+        }
+
+        // [NEW] Setup function for the new Course Detail View
+        function setupCourseDetailView(context) {
+            const courseId = context.id;
+            if (!courseId) return;
+
+            const linkInput = document.getElementById('lecture-link-input');
+            const saveLinkBtn = document.getElementById('save-lecture-link-btn');
+            const recordBtn = document.getElementById('record-lecture-btn');
+            const recordingsList = document.getElementById('recordings-list');
+            let isRecording = false;
+
+            // Load saved link
+            linkInput.value = localStorage.getItem(`course-link-${courseId}`) || '';
+
+            // Save link
+            saveLinkBtn.addEventListener('click', () => {
+                localStorage.setItem(`course-link-${courseId}`, linkInput.value);
+                alert('تم حفظ الرابط!');
+            });
+
+            // Handle recording simulation
+            recordBtn.addEventListener('click', () => {
+                isRecording = !isRecording;
+                if (isRecording) {
+                    recordBtn.classList.add('recording-btn');
+                    recordBtn.querySelector('span').dataset.translateKey = 'course_detail_record_stop';
+                } else {
+                    recordBtn.classList.remove('recording-btn');
+                    recordBtn.querySelector('span').dataset.translateKey = 'course_detail_record_start';
+                    // Save a new recording entry
+                    const now = new Date();
+                    const recordings = JSON.parse(localStorage.getItem(`course-recordings-${courseId}`) || '[]');
+                    recordings.push({
+                        title: `تسجيل ${now.toLocaleDateString()}`,
+                        time: now.toLocaleTimeString()
+                    });
+                    localStorage.setItem(`course-recordings-${courseId}`, JSON.stringify(recordings));
+                    renderRecordings();
+                }
+                setLanguage(currentLang); // update button text
+            });
+
+            function renderRecordings() {
+                const recordings = JSON.parse(localStorage.getItem(`course-recordings-${courseId}`) || '[]');
+                if (recordings.length === 0) {
+                    recordingsList.innerHTML = `<p class="text-secondary" data-translate-key="course_detail_no_recordings">${translations[currentLang].course_detail_no_recordings}</p>`;
+                } else {
+                    recordingsList.innerHTML = '';
+                    recordings.forEach(rec => {
+                        const item = document.createElement('div');
+                        item.className = 'list-item';
+                        item.innerHTML = `<div><p>${rec.title}</p><span class="text-sm text-secondary">${rec.time}</span></div><button class="secondary-btn" style="padding: 5px 10px;">▶</button>`;
+                        recordingsList.appendChild(item);
+                    });
+                }
+            }
+            renderRecordings();
+        }
+
+        function setupNotifications() {
+            const lectureToggle = document.getElementById('toggle-lecture-notify');
+            const rewardsToggle = document.getElementById('toggle-rewards-notify');
+            if (lectureToggle) {
+                const savedLecture = localStorage.getItem('notifyLectureEnabled');
+                lectureToggle.checked = savedLecture === null ? true : JSON.parse(savedLecture);
+                lectureToggle.addEventListener('change', () => {
+                    localStorage.setItem('notifyLectureEnabled', lectureToggle.checked);
+                });
+            }
+            if (rewardsToggle) {
+                const savedRewards = localStorage.getItem('notifyRewardsEnabled');
+                rewardsToggle.checked = savedRewards === null ? true : JSON.parse(savedRewards);
+                rewardsToggle.addEventListener('change', () => {
+                    localStorage.setItem('notifyRewardsEnabled', rewardsToggle.checked);
+                });
+            }
+        }
+
+        function setupKnowledgeMarket() {
+            const helpForm = document.getElementById('help-request-form');
+            const helpList = document.getElementById('help-list');
+            if (helpForm && helpList) {
+                helpForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const subjectInput = document.getElementById('help-subject');
+                    const descriptionInput = document.getElementById('help-description');
+                    const subject = subjectInput.value.trim();
+                    const description = descriptionInput.value.trim();
+                    if (!subject) return;
+                    const item = document.createElement('div');
+                    item.classList.add('list-item');
+                    item.innerHTML = `<strong>${subject}</strong>` + (description ? `<p>${description}</p>` : '');
+                    helpList.appendChild(item);
+                    subjectInput.value = '';
+                    descriptionInput.value = '';
+                });
+            }
+        }
+
+        function setupLabView() {
+            detailViewContent.querySelectorAll('.challenge-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const challengeId = card.dataset.challengeId;
+                    const challenge = challengesData[challengeId];
+                    if (challenge) {
+                        setupDetailView('challenge-workspace', 'view_title_challenge_workspace', { contextChallenge: challenge });
+                    }
+                });
+            });
+        }
+
+        function setupWorkspaceView(context) {
+            const challenge = context.contextChallenge;
+            if (!challenge) return;
+            
+            const titleEl = detailViewContent.querySelector('#challenge-title-workspace');
+            const descEl = detailViewContent.querySelector('#challenge-desc-workspace');
+            const codeEl = detailViewContent.querySelector('.code-editor-mock');
+            
+            if(titleEl) titleEl.textContent = translations[currentLang]?.[challenge.titleKey] || challenge.titleKey;
+            if(descEl) descEl.textContent = challenge.description;
+            if(codeEl) codeEl.textContent = challenge.code;
+
+            const chatInput = detailViewContent.querySelector('.chat-input');
+            const sendBtn = detailViewContent.querySelector('.chat-send-btn');
+            const messagesContainer = detailViewContent.querySelector('.chat-messages');
+            if(chatInput && sendBtn && messagesContainer) {
+                const handleSend = () => {
+                     const messageText = chatInput.value.trim();
+                     if(messageText) {
+                        const userMsg = document.createElement('div');
+                        userMsg.className = 'chat-message user';
+                        userMsg.textContent = messageText;
+                        messagesContainer.appendChild(userMsg);
+                        chatInput.value = '';
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                     }
+                };
+                sendBtn.addEventListener('click', handleSend);
+                chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleSend(); });
+            }
+        }
+
+        // --- Event Listeners ---
+        const orbitalNavItems = document.querySelectorAll('.orbital-nav-item');
+        const radius = 140; 
+        orbitalNavItems.forEach((item, i) => {
+            const angle = (i / orbitalNavItems.length) * 2 * Math.PI - (Math.PI / 2);
+            item.style.transform = `translate(${radius * Math.cos(angle)}px, ${radius * Math.sin(angle)}px)`;
+            item.addEventListener('click', () => {
+                setupDetailView(item.dataset.view, item.dataset.titleKey);
+            });
+        });
+        
+        document.getElementById('profile-btn').addEventListener('click', () => {
+            setupDetailView('student-matrix', 'view_title_matrix');
+        });
+
+        const notifyBtn = document.getElementById('notify-btn');
+        if (notifyBtn) {
+            notifyBtn.addEventListener('click', () => {
+                setupDetailView('student-notifications', 'view_title_notifications');
+            });
+        }
+        
+        closeViewBtn.addEventListener('click', () => {
+            detailViewContainer.classList.remove('active');
+            if (audioPlayer && !audioPlayer.paused) {
+                audioPlayer.pause();
+            }
+        });
+
+        // --- Main App Initialization ---
+        init3DBackground();
+        initIntroAudio();
+        loadLanguage();
+
+        const entryPrompt = document.getElementById('entry-prompt');
+        entryPrompt.addEventListener('click', () => {
+            playIntroSound();
+            entryPrompt.style.display = 'none';
+            document.querySelector('.logo-container').style.animation = 'fadeInLogo 2s ease-out forwards';
+            document.querySelector('.logo-container').style.opacity = '1';
+            setTimeout(() => switchScreen('student-app-screen'), 2500);
+        }, { once: true });
+
+
+        // --- Chart Initializations ---
+        const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: 'var(--text-secondary)' }, grid: { color: 'var(--border-color)' } }, x: { ticks: { color: 'var(--text-secondary)' }, grid: { color: 'transparent' } } } };
+
+        function initEffortChart() {
+            const ctx = document.getElementById('effort-chart')?.getContext('2d');
+            if (!ctx) return;
+            if(effortChart) effortChart.destroy();
+            effortChart = new Chart(ctx, { type: 'line', data: { labels: translations[currentLang].chart_days, datasets: [{ label: translations[currentLang].chart_effort_label, data: [30, 45, 60, 55, 80, 75], borderColor: 'var(--accent-secondary)', backgroundColor: 'rgba(0, 245, 212, 0.2)', fill: true, tension: 0.4 }] }, options: chartOptions });
+        }
+        
+        // --- AI Chat, Radio, etc. ---
+        function setupChat() {
+            const sendButton = document.getElementById('chat-send-button');
+            const inputField = document.getElementById('chat-input-field');
+            const messagesContainer = document.querySelector('.chat-messages');
+            const fileInput = document.getElementById('file-upload-input');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+
+            chatHistory = [{ role: "model", parts: [{ text: translations[currentLang].ai_welcome_message }] }];
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        selectedImageBase64 = event.target.result.split(',')[1];
+                        imagePreviewContainer.innerHTML = `<img src="${event.target.result}" alt="preview" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover; margin-left: 8px;">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            const sendMessage = async () => {
+                const apiKey = localStorage.getItem('geminiApiKey');
+                 if (!apiKey) {
+                    addMessage(translations[currentLang].ai_api_key_prompt, 'ai');
+                    return;
+                }
+
+                const userInput = inputField.value.trim();
+                if (userInput === '' && !selectedImageBase64) return;
+
+                const userParts = [];
+                if (userInput) { userParts.push({ text: userInput }); }
+                if (selectedImageBase64) { userParts.push({ inlineData: { mimeType: "image/jpeg", data: selectedImageBase64 } }); }
+                
+                addMessage(userInput, 'user', selectedImageBase64 ? `data:image/jpeg;base64,${selectedImageBase64}` : null);
+                chatHistory.push({ role: "user", parts: userParts });
+                
+                inputField.value = '';
+                selectedImageBase64 = null;
+                imagePreviewContainer.innerHTML = '';
+
+                showLoading();
+
+                try {
+                    const responseText = await callGeminiAPI(apiKey, chatHistory);
+                    hideLoading();
+                    addMessage(responseText, 'ai');
+                    chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+                } catch (error) {
+                    hideLoading();
+                    addMessage(translations[currentLang].ai_error_message, 'ai');
+                }
+            };
+
+            sendButton.addEventListener('click', sendMessage);
+            inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+            function addMessage(text, sender, imageUrl = null) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('chat-message', sender);
+                if (imageUrl) {
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = "user upload";
+                    messageElement.appendChild(img);
+                }
+                if (text) {
+                    const p = document.createElement('p');
+                    p.textContent = text;
+                    messageElement.appendChild(p);
+                }
+                messagesContainer.appendChild(messageElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            function showLoading() {
+                const loadingElement = document.createElement('div');
+                loadingElement.classList.add('chat-message', 'ai', 'loading');
+                loadingElement.id = 'loading-indicator';
+                loadingElement.innerHTML = '<span></span><span></span><span></span>';
+                messagesContainer.appendChild(loadingElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            function hideLoading() {
+                document.getElementById('loading-indicator')?.remove();
+            }
+        }
+        
+        async function callGeminiAPI(apiKey, history) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = { contents: history };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    return translations[currentLang].ai_no_answer;
+                }
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                throw error;
+            }
+        }
+        
+        function setupRadio() {
+            audioPlayer = document.getElementById('audio-player');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const progressBar = document.getElementById('progress-bar');
+            if (!audioPlayer || !playPauseBtn || !progressBar) return;
+
+            playPauseBtn.addEventListener('click', () => {
+                if (audioPlayer.paused) {
+                    audioPlayer.play();
+                    playPauseBtn.textContent = '⏸';
+                } else {
+                    audioPlayer.pause();
+                    playPauseBtn.textContent = '▶️';
+                }
+            });
+
+            audioPlayer.addEventListener('timeupdate', () => {
+                if (audioPlayer.duration) {
+                    const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                    progressBar.style.width = `${progress}%`;
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>
