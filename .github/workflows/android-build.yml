@@ -1,0 +1,42 @@
+# Name of the workflow
+name: Build Android APK
+
+# Controls when the action will run.
+# This workflow runs on every push to the main branch.
+on:
+  push:
+    branches: [ "main" ]
+
+# A workflow run is made up of one or more jobs
+jobs:
+  build:
+    # The type of virtual machine that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks
+    steps:
+    # 1. Checks-out your repository so the workflow can access it
+    - uses: actions/checkout@v3
+
+    # 2. Set up JDK (Java Development Kit) version 17
+    - name: set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    # 3. Grant execute permission for the gradlew file (important for Linux runners)
+    - name: Grant execute permission for gradlew
+      run: chmod +x app/gradlew
+
+    # 4. Build the debug APK using the gradlew wrapper
+    - name: Build with Gradle
+      run: ./app/gradlew -p app assembleDebug
+
+    # 5. Upload the generated APK as a build artifact
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-debug.apk
+        path: app/build/outputs/apk/debug/app-debug.apk
