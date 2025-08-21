@@ -20,14 +20,14 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Set up Android SDK
+           - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: |
             platform-tools
-            platforms;android-33
             build-tools;33.0.2
             cmdline-tools;latest
+
 
       # 👇 قبول كل رخص الـ SDK تلقائياً
       - name: Accept Android SDK licenses
