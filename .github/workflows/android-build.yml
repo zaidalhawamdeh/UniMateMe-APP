@@ -27,8 +27,13 @@ jobs:
             platform-tools
             platforms;android-34
             build-tools;34.0.0
+            cmdline-tools;latest
 
-      # 👇 توليد الـ Gradle Wrapper داخل نفس التشغيل (لا نعمل commit)
+      # 👇 قبول كل رخص الـ SDK تلقائياً
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
+
+      # 👇 توليد الـ wrapper داخل نفس التشغيل (لو مش موجود)
       - name: Generate Gradle Wrapper (8.5)
         uses: gradle/gradle-build-action@v3
         with:
